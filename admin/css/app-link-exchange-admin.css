@@ -1,0 +1,87 @@
+.mapper-group {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+}
+
+.mapper-group input.url {
+    margin-right: 10px;
+    margin-bottom: 5px;
+    width: 33%;
+}
+
+.mapper-group input.keyword {
+    margin-right: 10px;
+    margin-bottom: 5px;
+    width: 18%;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    margin-left: 10px;
+}
+  
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 20px;
+    transition: 0.3s;
+}
+
+.toggle-switch .slider:before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.toggle-switch input:checked + .slider {
+    background-color: #2271b1;
+}
+
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+.delete-button{
+    padding-top:5px !important;
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+    background: #f6f7f7 !important;
+}
+
+.field-enable-wrapper{
+    display:inline-block;
+    margin-right:10px;
+}
+
+.add-mapper-button {
+    border-color: #28a745 !important;
+    background: #f6f7f7 !important;
+    color: #28a745 !important;
+}
+
+.add-mapper-button span{
+    padding-top:4px;
+}
+
