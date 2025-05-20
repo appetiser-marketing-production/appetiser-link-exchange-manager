@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Appetiser Link Exchange Manager
  * Plugin URI:  https://appetiser.com.au
- * Description: A centralized tool to automatically insert and manage external links in blog content for link exchanges and monitor outbound links provided to partners..
+ * Description: A centralized tool to automatically insert and manage external links in blog content for link exchanges and monitor outbound links provided to partners.
  * Version: 1.0.0
  * Author: Landing page team
  * Author URI: https://appetiser.com.au
