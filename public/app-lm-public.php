@@ -46,7 +46,7 @@ Class Appetiser_Link_Mapper_Public {
                     }
     
                     $part = preg_replace_callback($keyword_pattern, function ($match) use ($outbound) {
-                        return '<a href="' . $outbound . '" target="_blank" rel="nofollow">' . $match[0] . '</a>';
+                        return '<a href="' . $outbound . '">' . $match[0] . '</a>';
                     }, $part);
                 }
     

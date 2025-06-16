@@ -33,7 +33,7 @@ add_action('admin_init', function() {
 require_once plugin_dir_path(__FILE__) . 'admin/app-lm-admin.php';
 require_once plugin_dir_path(__FILE__) . 'public/app-lm-public.php';
 
-// Initialize admin3
+// Initialize admin
 if (is_admin()) {
     new Appetiser_Link_Mapper_Admin();
 } else {

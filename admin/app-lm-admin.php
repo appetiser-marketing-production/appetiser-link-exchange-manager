@@ -1,10 +1,15 @@
 <?php
-class Appetiser_Link_Mapper_Admin {
 
+require_once WP_PLUGIN_DIR . '/appetiser-common-assets/inc/class-googlesheetreader-wrapper.php';
+
+class Appetiser_Link_Mapper_Admin {
+ 
     public function __construct() {
         add_action( 'admin_menu',  array( $this, 'add_plugin_menu' ) );
         add_action( 'admin_enqueue_scripts', array(  $this, 'enqueue_styles' ) );
         add_action( 'admin_enqueue_scripts', array(  $this, 'enqueue_scripts' ) );
+
+        add_action('admin_init', [$this, 'maybe_import_list']);
 
         add_action('wp_ajax_app_lm_check_url', [$this, 'handle_ajax_check_url']);
 
@@ -39,7 +44,7 @@ class Appetiser_Link_Mapper_Admin {
         ]);
         
     }
-
+    
     public function handle_ajax_check_url() {
         check_ajax_referer('app_lm_check_url', 'nonce');
     
@@ -65,25 +70,16 @@ class Appetiser_Link_Mapper_Admin {
     }
     
     public function add_plugin_menu() {
-        /*
-        add_management_page(
-            'Link Exchange Manager ',       // Page title
-            'Link Exchange Manager',       // Menu title
-            'manage_options',             // Capability
-            'appetiser-link-mapper',      // Menu slug
-            [$this, 'render_admin_page']  // Callback function
-        );
-        */  
         
         add_submenu_page(
             'appetiser-tools',           //parent-slug
-            'Link Exchange Manager',     
-            'Link Exchange Manager',     
+            'Link Exchange',     
+            'Link Exchange',     
             'manage_options',            
             'appetiser-link-mapper',     //menu-slug
             [$this, 'render_admin_page'] 
         );
-        
+         
     }
     
     private function save_link_maps() {
@@ -101,6 +97,7 @@ class Appetiser_Link_Mapper_Admin {
                 $post    = $post_id ? get_post($post_id) : null;
     
                 if (!$url || !$keyword || !$outbound || !$post || $post->post_type !== 'post') {
+                    echo "has invalid";
                     $has_invalid = true;
                     break; 
                 }
@@ -132,6 +129,104 @@ class Appetiser_Link_Mapper_Admin {
             'Link exchange mapping saved successfully.',
             'updated'
         );
+    }
+
+    public function maybe_import_list() {
+        if (isset($_POST['app_lm_import_sheet'])) {
+            $this->import_list();
+        }
+    }
+
+    private function import_list() {
+
+        if ( ! class_exists( 'GoogleSheetReader' ) ) {
+            return;
+        }
+
+        $jsonPath = WP_PLUGIN_DIR . '/appetiser-common-assets/inc/appetiser-website-backend-1af36aead0f7.json';
+        $spreadsheetId = '10V1lxO-q8wPFqHy1x1xyj__fqa0SHCcH-tRNUpuFzYw';
+        $reader = new GoogleSheetReader( $jsonPath, $spreadsheetId );
+        $range = "'Link Exchange Tracker'!G2:N";
+        $values = $reader->readRange($range);
+
+        // Load existing mappings
+        $existing = get_option('app_lm_link_mappings', []);
+        $existing_urls = array_column($existing, 'url');
+        $sanitized = $existing;
+
+        $has_invalid = false;
+
+        if (!empty($values)) {
+            foreach ($values as $row) {
+                $status   = $row[0] ?? ''; // G
+                $url      = $row[5] ?? ''; // L
+                $keyword  = $row[6] ?? ''; // M
+                $outbound = $row[7] ?? ''; // N
+
+                if (
+                    strtoupper(trim($status)) !== 'LIVE' ||
+                    trim($url) === '' ||
+                    trim($keyword) === '' ||
+                    trim($outbound) === ''
+                ) {
+                    continue;
+                }
+
+                // BEGIN: for local testing only
+                $url = str_replace('https://appetiser.com.au', 'http://appetiser.local', $url);
+                // END
+
+                $url      = esc_url_raw($url);
+                $keyword  = sanitize_text_field($keyword);
+                $outbound = esc_url_raw($outbound);
+
+                $post_id = url_to_postid($url);
+                $post    = $post_id ? get_post($post_id) : null;
+
+                if (!$post || $post->post_type !== 'post') {
+                    $has_invalid = true;
+                    continue;
+                }
+
+                // Skip duplicate URLs
+                if (in_array($url, $existing_urls, true)) {
+                    continue;
+                }
+
+                $sanitized[] = [
+                    'url'      => $url,
+                    'keyword'  => $keyword,
+                    'outbound' => $outbound,
+                    'enabled'  => false,
+                ];
+            }
+        }
+
+        // Save updated list if anything new was added
+        if (count($sanitized) > count($existing)) {
+            update_option('app_lm_link_mappings', $sanitized);
+
+            add_settings_error(
+                'app_lm_messages',
+                'app_lm_imported',
+                'Links imported successfully from Google Sheet.',
+                'updated'
+            );
+        } elseif ($has_invalid) {
+            add_settings_error(
+                'app_lm_messages',
+                'app_lm_import_error',
+                'Some entries could not be imported. Please check that all blog URLs point to published posts.',
+                'error'
+            );
+        } else {
+            add_settings_error(
+                'app_lm_messages',
+                'app_lm_import_empty',
+                'No new valid entries found in Google Sheet.',
+                'error'
+            );
+        }
     }
 
     public function handle_csv_export() {
@@ -181,6 +276,7 @@ class Appetiser_Link_Mapper_Admin {
     }
 
     public function render_admin_page() {
+
         ?>
         <div class="wrap">
             <h1>Link Exchange Dashboard</h1>
@@ -190,7 +286,7 @@ class Appetiser_Link_Mapper_Admin {
             </div>
         
             <div id="outbound" class="tabcontent">
-                <?php
+                <?php   
                     if (isset($_POST['app_lm_form_submitted']) && current_user_can('manage_options')) {
                         $this->save_link_maps();
                     }      
@@ -209,6 +305,10 @@ class Appetiser_Link_Mapper_Admin {
 
                 <input type="hidden" name="app_lm_form_submitted" value="1" />
                 <?php submit_button('Save Mappings'); ?>
+                </form>
+
+                <form method="post">
+                    <?php submit_button('Import/Sync from Google Sheet', 'secondary', 'app_lm_import_sheet'); ?>
                 </form>
 
                 <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
