@@ -153,6 +153,7 @@ class Appetiser_Link_Mapper_Admin {
 
         $jsonPath = get_option('app_lm_json_path');
         $spreadsheetId = get_option('app_lm_sheet_id');
+        $debug_mode = get_option('app_lm_debug_mode') === '1';
 
         // Failsafe: Check for class and JSON file
         if (
@@ -169,7 +170,7 @@ class Appetiser_Link_Mapper_Admin {
         }
 
         try {
-            $reader = new GoogleSheetReader($jsonPath, $spreadsheetId);
+            $reader = new GoogleSheetReader($jsonPath, $spreadsheetId, $debug_mode);
             $range = "'Link Exchange Tracker'!G2:N";
             $values = $reader->readRange($range);
         } catch (Exception $e) {
@@ -358,7 +359,7 @@ class Appetiser_Link_Mapper_Admin {
                     Comming soon.
                 </div>
             </div>
-
+                    
             <div id="settings" class="tabcontent">
                 <h2>Settings</h2>
                 <form method="post" action="options.php" enctype="multipart/form-data">
@@ -384,6 +385,20 @@ class Appetiser_Link_Mapper_Admin {
                                 <input type="text" name="app_lm_sheet_id" value="<?php echo esc_attr(get_option('app_lm_sheet_id')); ?>" class="regular-text" />
                             </td>
                         </tr>
+
+                        <tr valign="top">
+                            <th scope="row">Enable Debug Mode</th>
+                            <td>
+                                <div class="field-enable-wrapper">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="app_lm_debug_mode" value="1" <?php checked(get_option('app_lm_debug_mode'), '1'); ?> />
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span class="toggle-label">Debug Mode</span>
+                                </div>
+                            </td>
+                        </tr>
+
                     </table>
                     <?php submit_button('Save Settings'); ?>
                 </form>
@@ -399,6 +414,7 @@ class Appetiser_Link_Mapper_Admin {
 
     public function register_settings() {
         register_setting('app_lm_settings_group', 'app_lm_sheet_id');
+        register_setting('app_lm_settings_group', 'app_lm_debug_mode');
         register_setting('app_lm_settings_group', 'app_lm_json_path', [
         'type' => 'string',
         'sanitize_callback' => [ $this, 'handle_json_upload' ],
