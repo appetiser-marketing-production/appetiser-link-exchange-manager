@@ -1,6 +1,10 @@
 <?php
 
-require_once WP_PLUGIN_DIR . '/appetiser-common-assets/inc/class-googlesheetreader-wrapper.php';
+$google_sheet_wrapper = WP_PLUGIN_DIR . '/appetiser-common-assets/inc/class-googlesheetreader-wrapper.php';
+
+if ( file_exists( $google_sheet_wrapper ) ) {
+    require_once $google_sheet_wrapper;
+}
 
 class Appetiser_Link_Mapper_Admin {
  
@@ -14,6 +18,8 @@ class Appetiser_Link_Mapper_Admin {
         add_action('wp_ajax_app_lm_check_url', [$this, 'handle_ajax_check_url']);
 
         add_action('admin_post_app_lm_export_csv', [$this, 'handle_csv_export']);
+
+        add_action('admin_init', [ $this, 'register_settings' ]);
     }
 
     public function enqueue_styles( $hook ) {
@@ -92,6 +98,9 @@ class Appetiser_Link_Mapper_Admin {
                 $keyword  = isset($group['keyword']) ? sanitize_text_field($group['keyword']) : '';
                 $outbound = isset($group['outbound']) ? esc_url_raw($group['outbound']) : '';
                 $enabled  = isset($group['enabled']) ? true : false;
+                $replace_mode = isset($group['replace_mode']) ? sanitize_text_field($group['replace_mode']) : 'all';
+                $nofollow = isset($group['nofollow']) ? true : false;
+                $target = isset($group['target']) ? sanitize_text_field($group['target']) : '_self';
     
                 $post_id = url_to_postid($url);
                 $post    = $post_id ? get_post($post_id) : null;
@@ -107,6 +116,9 @@ class Appetiser_Link_Mapper_Admin {
                     'keyword'  => $keyword,
                     'outbound' => $outbound,
                     'enabled'  => $enabled,
+                    'replace_mode' => $replace_mode,
+                    'nofollow'     => $nofollow,
+                    'target'       => $target,
                 ];
             }
         }
@@ -136,32 +148,53 @@ class Appetiser_Link_Mapper_Admin {
             $this->import_list();
         }
     }
-
+    
     private function import_list() {
 
-        if ( ! class_exists( 'GoogleSheetReader' ) ) {
+        $jsonPath = get_option('app_lm_json_path');
+        $spreadsheetId = get_option('app_lm_sheet_id');
+
+        // Failsafe: Check for class and JSON file
+        if (
+            ! class_exists('GoogleSheetReader') ||
+            ! file_exists($jsonPath)
+        ) {
+            add_settings_error(
+                'app_lm_messages',
+                'app_lm_missing_dependency',
+                'Google Sheet import failed: missing class or credentials file.',
+                'error'
+            );
             return;
         }
 
-        $jsonPath = WP_PLUGIN_DIR . '/appetiser-common-assets/inc/appetiser-website-backend-1af36aead0f7.json';
-        $spreadsheetId = '10V1lxO-q8wPFqHy1x1xyj__fqa0SHCcH-tRNUpuFzYw';
-        $reader = new GoogleSheetReader( $jsonPath, $spreadsheetId );
-        $range = "'Link Exchange Tracker'!G2:N";
-        $values = $reader->readRange($range);
-
-        // Load existing mappings
+        try {
+            $reader = new GoogleSheetReader($jsonPath, $spreadsheetId);
+            $range = "'Link Exchange Tracker'!G2:N";
+            $values = $reader->readRange($range);
+        } catch (Exception $e) {
+            add_settings_error(
+                'app_lm_messages',
+                'app_lm_google_error',
+                'Google Sheet import error: ' . esc_html($e->getMessage()),
+                'error'
+            );
+        
+            return;
+        }
+        
+        // Proceed with sanitization and saving as before
         $existing = get_option('app_lm_link_mappings', []);
         $existing_urls = array_column($existing, 'url');
         $sanitized = $existing;
-
         $has_invalid = false;
-
+        
         if (!empty($values)) {
             foreach ($values as $row) {
-                $status   = $row[0] ?? ''; // G
-                $url      = $row[5] ?? ''; // L
-                $keyword  = $row[6] ?? ''; // M
-                $outbound = $row[7] ?? ''; // N
+                $status   = $row[0] ?? '';
+                $url      = $row[5] ?? '';
+                $keyword  = $row[6] ?? '';
+                $outbound = $row[7] ?? '';
 
                 if (
                     strtoupper(trim($status)) !== 'LIVE' ||
@@ -172,9 +205,8 @@ class Appetiser_Link_Mapper_Admin {
                     continue;
                 }
 
-                // BEGIN: for local testing only
+                // For local testing
                 $url = str_replace('https://appetiser.com.au', 'http://appetiser.local', $url);
-                // END
 
                 $url      = esc_url_raw($url);
                 $keyword  = sanitize_text_field($keyword);
@@ -188,21 +220,22 @@ class Appetiser_Link_Mapper_Admin {
                     continue;
                 }
 
-                // Skip duplicate URLs
                 if (in_array($url, $existing_urls, true)) {
                     continue;
                 }
 
                 $sanitized[] = [
-                    'url'      => $url,
-                    'keyword'  => $keyword,
-                    'outbound' => $outbound,
-                    'enabled'  => false,
+                    'url'          => $url,
+                    'keyword'      => $keyword,
+                    'outbound'     => $outbound,
+                    'enabled'      => false,
+                    'replace_mode' => 'first',
+                    'nofollow'     => true,
+                    'target'       => '_blank',
                 ];
             }
         }
 
-        // Save updated list if anything new was added
         if (count($sanitized) > count($existing)) {
             update_option('app_lm_link_mappings', $sanitized);
 
@@ -283,6 +316,7 @@ class Appetiser_Link_Mapper_Admin {
             <div class="tab">
                 <button class="tablinks" onclick="openTab(event, 'outbound')" id="outboundtablink">Outbound Links to Partners</button>
                 <button class="tablinks" onclick="openTab(event, 'inbound')" id="backlinkstablink">Backlinks from Partners</button>
+                <button class="tablinks" onclick="openTab(event, 'settings')" id="outboundtablink">Settings</button>
             </div>
         
             <div id="outbound" class="tabcontent">
@@ -324,11 +358,78 @@ class Appetiser_Link_Mapper_Admin {
                     Comming soon.
                 </div>
             </div>
-            <div class="bottomtab">
-                documentation
+
+            <div id="settings" class="tabcontent">
+                <h2>Settings</h2>
+                <form method="post" action="options.php" enctype="multipart/form-data">
+                    <?php
+                    settings_fields('app_lm_settings_group');
+                    do_settings_sections('app_lm_settings_group');
+                    ?>
+                    <table class="form-table">
+                        <tr valign="top">
+                            <th scope="row">Upload Google JSON Key File</th>
+                            <td>
+                                <input type="file" name="app_lm_json_file" accept=".json" />
+                                <?php $current_path = get_option('app_lm_json_path'); ?>
+                                <input type="hidden" name="app_lm_json_path" value="<?php echo esc_attr($current_path); ?>" />
+                                <?php if ($current_path): ?>
+                                    <p><code><?php echo esc_html($current_path); ?></code></p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr valign="top">
+                            <th scope="row">Google Spreadsheet ID</th>
+                            <td>
+                                <input type="text" name="app_lm_sheet_id" value="<?php echo esc_attr(get_option('app_lm_sheet_id')); ?>" class="regular-text" />
+                            </td>
+                        </tr>
+                    </table>
+                    <?php submit_button('Save Settings'); ?>
+                </form>
+                </div>
+
+                <div class="bottomtab">
+                    documentation
+                </div>
+                
             </div>
-            
-        </div>
-        <?php
+            <?php
+        }
+
+    public function register_settings() {
+        register_setting('app_lm_settings_group', 'app_lm_sheet_id');
+        register_setting('app_lm_settings_group', 'app_lm_json_path', [
+        'type' => 'string',
+        'sanitize_callback' => [ $this, 'handle_json_upload' ],
+    ]);
     }
+
+    public function handle_json_upload($existing_value = '') {
+        if (
+            isset($_FILES['app_lm_json_file']) &&
+            !empty($_FILES['app_lm_json_file']['tmp_name']) &&
+            current_user_can('manage_options')
+        ) {
+            $upload_dir  = wp_upload_dir();
+            $target_dir  = $upload_dir['basedir'] . '/appetiser-settings/';
+            $filename    = sanitize_file_name($_FILES['app_lm_json_file']['name']);
+            $target_path = $target_dir . $filename;
+
+            if (move_uploaded_file($_FILES['app_lm_json_file']['tmp_name'], $target_path)) {
+                return $target_path; // ✅ Save new path only if upload was successful
+            } else {
+                add_settings_error(
+                    'app_lm_messages',
+                    'app_lm_upload_error',
+                    'Failed to upload JSON file. Please check file permissions.',
+                    'error'
+                );
+                return $existing_value; // 🔄 Fallback: keep the old value
+            }
+        }
+
+        return $existing_value; // ✅ No file uploaded: preserve existing value
+    }
+
 }

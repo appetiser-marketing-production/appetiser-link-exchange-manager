@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let index = 0;
 
-    const createGroup = (url = "", keyword = "", outbound = "", enabled = true) => {
+    const createGroup = (url = "", keyword = "", outbound = "", enabled = false, replace_mode = "first", nofollow = true, target = "_blank") => {
         const group = document.createElement("div");
         group.className = "mapper-group";
         group.innerHTML = `
@@ -16,6 +16,30 @@ document.addEventListener("DOMContentLoaded", function () {
             <span class="url-status"></span>
             <input type="text" name="link_mapper[${index}][keyword]" placeholder="Keyword(s)" value="${keyword}" class="keyword" required />
             <input type="text" name="link_mapper[${index}][outbound]" placeholder="Outbound Link" value="${outbound}" class="url" required />
+
+            <label>
+                <select name="link_mapper[${index}][replace_mode]">
+                    <option value="all" ${replace_mode === 'all' ? 'selected' : ''}>All Instances</option>
+                    <option value="first" ${replace_mode === 'first' ? 'selected' : ''}>First Only</option>
+                </select>
+            </label>
+
+            <label>
+                <select name="link_mapper[${index}][target]">
+                    <option value="_self" ${target === '_self' ? 'selected' : ''}>Same Tab (_self)</option>
+                    <option value="_blank" ${target === '_blank' ? 'selected' : ''}>New Tab (_blank)</option>
+                    <option value="_new" ${target === '_new' ? 'selected' : ''}>New Window (_new)</option>
+                </select>
+            </label>
+
+            <div class="field-enable-wrapper">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="link_mapper[${index}][nofollow]" ${nofollow === true ? 'checked' : ''} />
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Nofollow</span>
+            </div>
+
             <div class="field-enable-wrapper">
                 <label class="toggle-switch">
                     <input type="checkbox" name="link_mapper[${index}][enabled]" ${enabled ? 'checked' : ''} />
@@ -23,6 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </label>
                 <span class="toggle-label">Enable</span>
             </div>
+
             <button type="button" class="remove-mapper-group button delete-button" title="Remove">
                 <span class="dashicons dashicons-trash"></span>
             </button>
@@ -30,9 +55,9 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(group);
         index++;
     };
-
+    
     addBtn.addEventListener("click", () => {
-        createGroup();
+        createGroup("", "", "", false, "first", true, "_blank");
     });
 
     container.addEventListener("click", (e) => {
@@ -41,14 +66,21 @@ document.addEventListener("DOMContentLoaded", function () {
             removeBtn.parentElement.remove();
         }
     });
-
-    // Prepopulate with saved mappings
+    
     if (typeof appLmSavedMappings !== "undefined" && Array.isArray(appLmSavedMappings) && appLmSavedMappings.length > 0) {
         appLmSavedMappings.forEach(item => {
-            createGroup(item.url, item.keyword, item.outbound, item.enabled !== false);
+            createGroup(
+                item.url,
+                item.keyword,
+                item.outbound,
+                item.enabled !== false,
+                item.replace_mode || 'first',
+                typeof item.nofollow !== "undefined" ? item.nofollow : true,
+                item.target || '_blank'
+            );
         });
     } else {
-        createGroup();
+        createGroup("", "", "", false, "first", true, "_blank");
     }
 });
 
@@ -83,4 +115,3 @@ document.addEventListener("input", function (e) {
         }, 500);
     }
 });
-
