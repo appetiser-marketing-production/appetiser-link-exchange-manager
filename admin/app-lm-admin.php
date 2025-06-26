@@ -206,8 +206,8 @@ class Appetiser_Link_Mapper_Admin {
                     continue;
                 }
 
-                // For local testing
-                $url = str_replace('https://appetiser.com.au', 'http://appetiser.local', $url);
+                
+                $url = str_replace('https://appetiser.com.au', 'http://dev.appetiser.com.au', $url);
 
                 $url      = esc_url_raw($url);
                 $keyword  = sanitize_text_field($keyword);
@@ -236,7 +236,7 @@ class Appetiser_Link_Mapper_Admin {
                 ];
             }
         }
-
+        
         if (count($sanitized) > count($existing)) {
             update_option('app_lm_link_mappings', $sanitized);
 
