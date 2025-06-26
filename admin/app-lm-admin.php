@@ -231,7 +231,7 @@ class Appetiser_Link_Mapper_Admin {
                     'outbound'     => $outbound,
                     'enabled'      => false,
                     'replace_mode' => 'first',
-                    'nofollow'     => true,
+                    'nofollow'     => false,
                     'target'       => '_blank',
                 ];
             }

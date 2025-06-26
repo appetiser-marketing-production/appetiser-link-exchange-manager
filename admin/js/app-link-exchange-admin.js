@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let index = 0;
 
-    const createGroup = (url = "", keyword = "", outbound = "", enabled = false, replace_mode = "first", nofollow = true, target = "_blank") => {
+    const createGroup = (url = "", keyword = "", outbound = "", enabled = false, replace_mode = "first", nofollow = false, target = "_blank") => {
         const group = document.createElement("div");
         group.className = "mapper-group";
         group.innerHTML = `
