@@ -75,12 +75,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 item.outbound,
                 item.enabled !== false,
                 item.replace_mode || 'first',
-                typeof item.nofollow !== "undefined" ? item.nofollow : true,
+                typeof item.nofollow !== "undefined" ? item.nofollow : false,
                 item.target || '_blank'
             );
         });
     } else {
-        createGroup("", "", "", false, "first", true, "_blank");
+        createGroup("", "", "", false, "first", false, "_blank");
     }
 });
 
