@@ -18,7 +18,7 @@ Class Appetiser_Link_Mapper_Public {
         foreach ($mappings as $map) {
             if (empty($map['enabled'])) {
                 continue;
-            }
+            } 
 
             $target_path = wp_parse_url($map['url'], PHP_URL_PATH);
 
@@ -54,7 +54,7 @@ Class Appetiser_Link_Mapper_Public {
                             return $match[0];
                         }
                         $replace_done = true;
-                        return '<a href="' . $outbound . '" target="' . $target . '"' . $nofollow . '>' . $match[0] . '</a>';
+                        return '<a href="' . $outbound . '" target="' . $target . '"' . $nofollow . ' class="app-lm-link">' . $match[0] . '</a>';
                     }, $part, ($replace_mode === 'first' ? 1 : -1));
                 }
 
