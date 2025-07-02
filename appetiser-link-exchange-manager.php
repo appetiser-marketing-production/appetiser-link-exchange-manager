@@ -37,6 +37,5 @@ require_once plugin_dir_path(__FILE__) . 'public/app-lm-public.php';
 if (is_admin()) {
     new Appetiser_Link_Mapper_Admin();
 } else {
-    // Init frontend filter
     new Appetiser_Link_Mapper_Public();
 }

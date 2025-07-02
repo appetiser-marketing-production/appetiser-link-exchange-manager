@@ -402,7 +402,7 @@ class Appetiser_Link_Mapper_Admin {
                     </table>
                     <?php submit_button('Save Settings'); ?>
                 </form>
-                </div>
+            </div>
 
                 <div class="bottomtab">
                     documentation
