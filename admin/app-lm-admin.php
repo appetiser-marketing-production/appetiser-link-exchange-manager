@@ -206,9 +206,10 @@ class Appetiser_Link_Mapper_Admin {
                     continue;
                 }
 
+                if ( class_exists('Appetiser_Common_Utils') && !Appetiser_Common_Utils::is_live_env() ) {
+                    $url = str_replace('https://appetiser.com.au', home_url(), $url);
+                }
                 
-                $url = str_replace('https://appetiser.com.au', 'http://dev.appetiser.com.au', $url);
-
                 $url      = esc_url_raw($url);
                 $keyword  = sanitize_text_field($keyword);
                 $outbound = esc_url_raw($outbound);

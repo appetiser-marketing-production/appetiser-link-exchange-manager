@@ -33,6 +33,11 @@ add_action('admin_init', function() {
 require_once plugin_dir_path(__FILE__) . 'admin/app-lm-admin.php';
 require_once plugin_dir_path(__FILE__) . 'public/app-lm-public.php';
 
+$common_utils = WP_PLUGIN_DIR . '/appetiser-common-assets/inc/class-appetiser-common-utils.php';
+if ( file_exists( $common_utils ) ) {
+    require_once $common_utils;
+}
+
 // Initialize admin
 if (is_admin()) {
     new Appetiser_Link_Mapper_Admin();
